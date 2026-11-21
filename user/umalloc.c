@@ -33,10 +33,11 @@ struct PageInfo {
     struct PageInfo *next;
 };
 
-
 static Header *free_lists[NUM_BINS];// массив голов свободных списков
 static Header *large_free_list;
 static struct PageInfo *pages;//отдельный список всех страниц, полученных аллокаторо 
+static char *heap_start;   // начало кучи 
+static int alloc_debug = 1;
 static Header *large_malloc(uint nbytes);
 static void release_free_pages(void);
 
@@ -71,6 +72,8 @@ morecore(int bin)   //в какой-то степени реализация п�
 
     if (mem == (char *)-1) // проверяем что нормально выделилась память 
         return 0;
+    if (heap_start == 0)
+        heap_start = mem;
     page = (struct PageInfo *)mem;
 
     available = PGSIZE - sizeof(struct PageInfo);
@@ -118,6 +121,7 @@ malloc(uint nbytes)
         if (h == 0)
             return 0;
 
+        if (alloc_debug) print_allocator_state();
         return (void *)(h + 1);
     }
 
@@ -131,6 +135,7 @@ malloc(uint nbytes)
     page = h->s.page;
     page->free_blocks--;
 
+    if (alloc_debug) print_allocator_state();
     return (void *)(h + 1);
 }
 
@@ -154,7 +159,7 @@ free(void *ap)
         large_free_list = h;
 
         release_free_pages();
-
+        if (alloc_debug) print_allocator_state();
         return;
     }
     bin = get_bin(page->allocation_size - sizeof(Header));
@@ -165,6 +170,7 @@ free(void *ap)
     free_lists[bin] = h;
 
     release_free_pages();
+    if (alloc_debug) print_allocator_state();
 }
 
 static Header *
@@ -206,6 +212,8 @@ large_malloc(uint nbytes)
 
     if (mem == (char *)-1)
         return 0;
+    if (heap_start == 0)
+        heap_start = mem;
 
     page = (struct PageInfo *)mem;
 
@@ -332,4 +340,65 @@ release_free_pages(void)
             return;
         }
     }
+}
+void
+print_allocator_state(void)
+{
+    struct PageInfo *pg;
+    Header *h;
+    char *brk;
+    uint used = 0, free_bytes = 0, total = 0;
+    int cnt;
+
+    brk = sbrk(0);
+
+    printf("=== heap dump ===\n");
+    printf("heap_start=%p brk=%p heap_total=%d\n",
+           heap_start, brk, heap_start ? (int)(brk - heap_start) : 0);
+
+    // cвободные списки по корзинам
+    for (int b = 0; b < NUM_BINS; b++) {
+        cnt = 0;
+        printf("bin[%d] size=%d:", b, allocation_sizes[b]);
+        for (h = free_lists[b]; h; h = h->s.next) {
+            printf(" %p", h);
+            cnt++;
+        }
+        printf(" (free=%d)\n", cnt);
+    }
+
+    printf("large_free:");
+    cnt = 0;
+    for (h = large_free_list; h; h = h->s.next) {
+        printf(" %p(pages=%d)", h, h->s.page->allocation_size);
+        cnt++;
+    }
+    printf(" (free=%d)\n", cnt);
+
+    // cтраницы: занятые/свободные блоки, статистика
+    for (pg = pages; pg; pg = pg->next) {
+        if (pg->is_large) {
+            uint bytes = pg->allocation_size * PGSIZE;
+            total += bytes;
+            if (pg->free_blocks)
+                free_bytes += bytes;
+            else
+                used += bytes;
+            printf("page %p LARGE pages=%d %s\n", pg, pg->allocation_size,
+                   pg->free_blocks ? "FREE" : "USED");
+        } else {
+            uint bytes = pg->total_blocks * pg->allocation_size;
+            total += bytes;
+            used       += (pg->total_blocks - pg->free_blocks) * pg->allocation_size;
+            free_bytes += pg->free_blocks * pg->allocation_size;
+            printf("page %p size=%d blocks=%d free=%d used=%d\n",
+                   pg, pg->allocation_size, pg->total_blocks, pg->free_blocks,
+                   pg->total_blocks - pg->free_blocks);
+        }
+    }
+
+    printf("used=%d free=%d total=%d util=%d%%\n",
+           used, free_bytes, total,
+           total ? (int)(used * 100 / total) : 0);
+    printf("\n");
 }
