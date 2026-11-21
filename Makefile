@@ -152,8 +152,8 @@ UPROGS=\
 	$U/_dorphan\
 	$U/_sync\
 	$U/_testplus\
-	$U/_plus \
-	$U/_alcotest
+	$U/_plus\
+	$U/_alloctest \
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
@@ -165,7 +165,7 @@ clean:
 	*/*.o */*.d */*.asm */*.sym \
 	$K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
-        $U/usys.S \
+	$U/usys.S \
 	$(UPROGS)
 
 # try to generate a unique GDB port

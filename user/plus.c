@@ -1,4 +1,4 @@
-﻿#include "kernel/types.h"
+#include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
 
@@ -14,6 +14,7 @@ main(int argc, char *argv[])
     int b = atoi(argv[2]);
 
     int result = plus(a, b);
+    printf("%d\n", result);
 
     exit(0);
 }
