@@ -71,6 +71,7 @@ CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding
 CFLAGS += -fno-common -nostdlib
+CFLAGS += -fno-delete-null-pointer-checks
 CFLAGS += -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset
 CFLAGS += -fno-builtin-memmove -fno-builtin-memcmp -fno-builtin-log -fno-builtin-bzero
 CFLAGS += -fno-builtin-strchr -fno-builtin-exit -fno-builtin-malloc -fno-builtin-putc
@@ -151,8 +152,8 @@ UPROGS=\
 	$U/_dorphan\
 	$U/_sync\
 	$U/_testplus\
-	$U/_plus \
-	$U/_alcotest
+	$U/_plus\
+	$U/_alloctest \
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
@@ -164,7 +165,7 @@ clean:
 	*/*.o */*.d */*.asm */*.sym \
 	$K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
-        $U/usys.S \
+	$U/usys.S \
 	$(UPROGS)
 
 # try to generate a unique GDB port
